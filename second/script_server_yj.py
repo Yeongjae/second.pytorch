@@ -213,22 +213,26 @@ def train_nuscenes_pp_car():
         config,
         model_dir_root / "pp_car" / ("test_" + date_str))
 
-def train_nuscenes_pp_all_lowa():
+def train_nuscenes_pp_all_lowa(date_str):
     config = Path(
         __file__).resolve().parent / "configs/nuscenes/all.pp.lowa.config"
-    ckpt_path = "/home/yy/deeplearning/model_dirs/kitti/car_pp_long_v0/voxelnet-296960.tckpt"
-    ckpt_path = "/home/yy/deeplearning/model_dirs/kitti/car_pp_long_v0/voxelnet-296960.tckpt"
-    ckpt_path = "/data/private/bev/second_v1.6/trained_model/kitti/pretrained_models_v1.5/pp_model_for_nuscenes_pretrain/voxelnet-296960.tckpt"   # need to spread, yj.star
+    ckpt_path = "/data/project/second_v1.6/trained_model/kitti/pretrained_models_v1.5/pp_model_for_nuscenes_pretrain/voxelnet-296960.tckpt"   # need to spread, yj.star
     # config = Path(__file__).resolve().parent() / "configs/car.fhd.nu.config"
     config = _get_config(config)
     _nuscenes_modify_step(config, 50, 5, 8)
-    model_dir_root = Path("/home/yy/deeplearning/model_dirs/nuscene")
-    model_dir_root = Path("/data/second_v1.6_trained_model/nusc")
-    date_str = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+
+    model_dir_root = Path("/data/project/second_v1.6/trained_model/nusc")
+
+    if date_str is None:
+        date_str = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+        is_resume=False
+    else:
+        is_resume=True
+
     train(
         config,
         model_dir_root / "all_pp_lowa" / ("test_" + date_str),
-        pretrained_path=ckpt_path, multi_gpu=False)
+        pretrained_path=ckpt_path, multi_gpu=True, resume=is_resume)
 
 def resume_nuscenes_pp_all():
     config = Path(
