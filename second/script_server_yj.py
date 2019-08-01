@@ -213,9 +213,9 @@ def train_nuscenes_pp_car():
         config,
         model_dir_root / "pp_car" / ("test_" + date_str))
 
-def train_nuscenes_pp_all_lowa(date_str):
+def train_nuscenes_pp_all_lowa(date_str=None, data_version="v1.0_trainval"):
     config = Path(
-        __file__).resolve().parent / "configs/nuscenes/all.pp.lowa.config"
+        __file__).resolve().parent / ("configs/nuscenes/all.pp.lowa." + data_version + ".config")
     ckpt_path = "/data/project/second_v1.6/trained_model/kitti/pretrained_models_v1.5/pp_model_for_nuscenes_pretrain/voxelnet-296960.tckpt"   # need to spread, yj.star
     # config = Path(__file__).resolve().parent() / "configs/car.fhd.nu.config"
     config = _get_config(config)
@@ -231,7 +231,7 @@ def train_nuscenes_pp_all_lowa(date_str):
 
     train(
         config,
-        model_dir_root / "all_pp_lowa" / ("test_" + date_str),
+        model_dir_root / ("all_pp_lowa_" + data_version) / ("test_" + date_str),
         pretrained_path=ckpt_path, multi_gpu=True, resume=is_resume)
 
 def resume_nuscenes_pp_all():
@@ -252,6 +252,6 @@ def resume_nuscenes_pp_all():
 if __name__ == "__main__":
     # model_tool.rm_invalid_model_dir("/home/yy/deeplearning/model_dirs/nuscene")
     # train_nuscenes_lite_hrz()
-    train_nuscenes_pp_all_lowa()
+    train_nuscenes_pp_all_lowa(data_version="v1.0_mini")
 
     #resume_nuscenes_pp_all()

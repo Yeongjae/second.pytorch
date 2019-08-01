@@ -773,10 +773,10 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", max_sweeps=10):
             "infos": train_nusc_infos,
             "metadata": metadata,
         }
-        with open(root_path / "infos_train.pkl", 'wb') as f:
+        with open(root_path / version / "infos_train.pkl", 'wb') as f:
             pickle.dump(data, f)
         data["infos"] = val_nusc_infos
-        with open(root_path / "infos_val.pkl", 'wb') as f:
+        with open(root_path / version / "infos_val.pkl", 'wb') as f:
             pickle.dump(data, f)
 
 
