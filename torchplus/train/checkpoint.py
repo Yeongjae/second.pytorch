@@ -107,7 +107,7 @@ def save(model_dir,
             if global_step % 100000:
                 os.remove(str(Path(model_dir) / ckpt_to_delete))
             else:
-                print("Remain the checkpoint: " ckpt_to_delete)
+                print("Don't delete the every 100k checkpoint")
         all_ckpts_filename = _ordered_unique([Path(f).name for f in all_ckpts])
         ckpt_info_dict['all_ckpts'][model_name] = all_ckpts_filename
         with open(ckpt_info_path, 'w') as f:
