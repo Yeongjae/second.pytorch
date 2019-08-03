@@ -219,7 +219,7 @@ def train_nuscenes_pp_all_lowa(date_str=None, data_version="v1.0_trainval"):
     ckpt_path = "/data/project/second_v1.6/trained_model/kitti/pretrained_models_v1.5/pp_model_for_nuscenes_pretrain/voxelnet-296960.tckpt"   # need to spread, yj.star
     # config = Path(__file__).resolve().parent() / "configs/car.fhd.nu.config"
     config = _get_config(config)
-    _nuscenes_modify_step(config, 50, 5, 8)
+    _nuscenes_modify_step(config, 5000, 5, 8)
 
     model_dir_root = Path("/data/project/second_v1.6/trained_model/nusc")
 
@@ -231,7 +231,7 @@ def train_nuscenes_pp_all_lowa(date_str=None, data_version="v1.0_trainval"):
 
     train(
         config,
-        model_dir_root / ("all_pp_lowa_" + data_version) / ("test_" + date_str),
+        model_dir_root / ("all_pp_lowa_" + data_version + "_map_prior") / ("test_" + date_str),
         pretrained_path=ckpt_path, multi_gpu=True, resume=is_resume)
 
 def resume_nuscenes_pp_all():

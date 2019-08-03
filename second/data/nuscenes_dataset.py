@@ -16,6 +16,10 @@ from second.data import kitti_common as kitti
 from second.data.dataset import Dataset, register_dataset
 from second.utils.eval import get_coco_eval_result, get_official_eval_result
 from second.utils.progress_bar import progress_bar_iter as prog_bar
+from nuscenes.utils.geometry_utils import transform_matrix
+from functools import reduce
+from pyquaternion import Quaternion
+
 from second.utils.timer import simple_timer
 
 
@@ -144,6 +148,22 @@ class NuScenesDataset(Dataset):
             example["anchors_mask"] = example["anchors_mask"].astype(np.uint8)
         return example
 
+    # by yj.star
+    def add_map_prior(self, points, info):
+        # points.transform(info.map_transform_matrix)
+        # is_on_mask = info.map_mask.is_on_mask(x=points.points[0, :], y=points.points[1, :])
+
+        # Applies a homogeneous transformation.
+        points_on_global = np.transpose(points)
+        points_on_global[:3, :] = info['map_transform_matrix'].dot(np.vstack((points_on_global[:3, :], np.ones(points_on_global.shape[1]))))[:3, :]
+        #points_on_global = np.dot(points, info['map_transform_matrix'])
+
+        map_mask = info['map_mask']
+        is_on_mask = map_mask.is_on_mask(x=points_on_global[0,:], y=points_on_global[1,:])
+        points[:,3]=is_on_mask
+
+        return points
+
     def get_sensor_data(self, query):
         idx = query
         read_test_image = False
@@ -174,6 +194,7 @@ class NuScenesDataset(Dataset):
             points_sweep = np.fromfile(
                 str(sweep["lidar_path"]), dtype=np.float32,
                 count=-1).reshape([-1, 5])
+            #points = scan.reshape((-1, 5))[:, :cls.nbr_dims()]
             sweep_ts = sweep["timestamp"] / 1e6
             points_sweep[:, 3] /= 255
             points_sweep[:, :3] = points_sweep[:, :3] @ sweep[
@@ -183,6 +204,8 @@ class NuScenesDataset(Dataset):
             sweep_points_list.append(points_sweep)
 
         points = np.concatenate(sweep_points_list, axis=0)[:, [0, 1, 2, 4]]
+
+        points = self.add_map_prior(points, info)
 
         if read_test_image:
             if Path(info["cam_front_path"]).exists():
@@ -593,6 +616,29 @@ def _get_available_scenes(nusc):
     print("exist scene num:", len(available_scenes))
     return available_scenes
 
+# by yj.star for map_prior
+def _get_map_mask_and_transform_matrix(nusc, sample):
+    ## get coordinate transformation matrices
+    ref_channel = 'LIDAR_TOP'
+    ref_sd_token = sample['data'][ref_channel]
+    ref_sd_rec = nusc.get('sample_data', ref_sd_token)
+    ref_pose_rec = nusc.get('ego_pose', ref_sd_rec['ego_pose_token'])
+    ref_cs_rec = nusc.get('calibrated_sensor', ref_sd_rec['calibrated_sensor_token'])
+    global_from_car = transform_matrix(ref_pose_rec['translation'],
+                                       Quaternion(ref_pose_rec['rotation']), inverse=False)
+    car_from_current = transform_matrix(ref_cs_rec['translation'], Quaternion(ref_cs_rec['rotation']),
+                                        inverse=False)
+
+    ## Fuse two transformation matrices into one and perform transfrom.
+    map_transform_matrix = reduce(np.dot, [global_from_car, car_from_current])
+
+    scene_record = nusc.get('scene', sample['scene_token'])
+    log_record = nusc.get('log', scene_record['log_token'])
+    map_record = nusc.get('map', log_record['map_token'])
+    map_mask = map_record['mask']
+
+    return map_mask, map_transform_matrix
+
 
 def _fill_trainval_infos(nusc,
                          train_scenes,
@@ -615,6 +661,10 @@ def _fill_trainval_infos(nusc,
         assert Path(lidar_path).exists(), (
             "you must download all trainval data, key-frame only dataset performs far worse than sweeps."
         )
+
+        # for map_prior
+        map_mask, map_transform_matrix = _get_map_mask_and_transform_matrix(nusc, sample)
+
         info = {
             "lidar_path": lidar_path,
             "cam_front_path": cam_path,
@@ -625,6 +675,8 @@ def _fill_trainval_infos(nusc,
             "ego2global_translation": pose_record['translation'],
             "ego2global_rotation": pose_record['rotation'],
             "timestamp": sample["timestamp"],
+            "map_mask": map_mask,
+            "map_transform_matrix": map_transform_matrix
         }
 
         l2e_r = info["lidar2ego_rotation"]
@@ -643,6 +695,7 @@ def _fill_trainval_infos(nusc,
                                      sd_rec['calibrated_sensor_token'])
                 pose_record = nusc.get('ego_pose', sd_rec['ego_pose_token'])
                 lidar_path = nusc.get_sample_data_path(sd_rec['token'])
+
                 sweep = {
                     "lidar_path": lidar_path,
                     "sample_data_token": sd_rec['token'],
@@ -650,7 +703,7 @@ def _fill_trainval_infos(nusc,
                     "lidar2ego_rotation": cs_record['rotation'],
                     "ego2global_translation": pose_record['translation'],
                     "ego2global_rotation": pose_record['rotation'],
-                    "timestamp": sd_rec["timestamp"]
+                    "timestamp": sd_rec["timestamp"],
                 }
                 l2e_r_s = sweep["lidar2ego_rotation"]
                 l2e_t_s = sweep["lidar2ego_translation"]
@@ -729,6 +782,8 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", max_sweeps=10):
     elif version == "v1.0-mini":
         train_scenes = splits.mini_train
         val_scenes = splits.mini_val
+        #train_scenes = train_scenes[:1]     # yj.star, 지워야
+        #val_scenes = val_scenes[:1]         # yj.star, 지워야
     else:
         raise ValueError("unknown")
     test = "test" in version
