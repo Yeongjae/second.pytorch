@@ -19,7 +19,7 @@ def nuscenes_data_prep(root_path, version, dataset_name, max_sweeps=10):
     name = "infos_train.pkl"
     if version == "v1.0-test":
         name = "infos_test.pkl"
-    create_groundtruth_database(dataset_name, root_path, Path(root_path) / version / name, db_info_save_path=Path(root_path) / version / "kitti_dbinfos_train.pkl")
+    create_groundtruth_database(dataset_name, root_path, Path(root_path) / version / name, db_info_save_path=Path(root_path) / version / "kitti_dbinfos_train.temp.pkl")
 
 if __name__ == '__main__':
     fire.Fire()
