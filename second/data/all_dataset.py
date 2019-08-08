@@ -32,7 +32,7 @@ def create_groundtruth_database(dataset_class_name,
     else:
         database_save_path = Path(database_save_path)
     if db_info_save_path is None:
-        db_info_save_path = root_path / "kitti_dbinfos_train.pkl"
+        db_info_save_path = root_path / "kitti_dbinfos_train.temp.pkl"
     database_save_path.mkdir(parents=True, exist_ok=True)
     all_db_infos = {}
 
